@@ -18,7 +18,7 @@ int main(int argc, const char** argv)
 	}
 	
 	std::string usage = argv[1];
-	std::vector<std::string> args {argv+2, argv+argc};
+	std::vector<std::string> args(argv+2, argv+argc);
 	
 	auto result = docopt::docopt(usage, args);
 

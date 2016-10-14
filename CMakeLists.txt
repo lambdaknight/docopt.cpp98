@@ -3,12 +3,16 @@ project(docopt.cpp VERSION 0.6.1)
 
 include(GNUInstallDirs)
 
+if (TEST98)
+	set (CMAKE_CXX_STANDARD 98)
+endif ()
+
 #============================================================================
 # Settable options
 #============================================================================
-option(WITH_TESTS "Build tests." OFF)
-option(WITH_EXAMPLE "Build example." OFF)
-option(USE_BOOST_REGEX "Replace std::regex with Boost.Regex" OFF)
+option(WITH_TESTS "Build tests." ON)
+option(WITH_EXAMPLE "Build example." ON)
+option(USE_BOOST_REGEX "Replace std::regex with Boost.Regex" ON)
 
 #============================================================================
 # Internal compiler options
