@@ -16,32 +16,38 @@
 #include <string>
 
 #ifdef DOCOPT_HEADER_ONLY
-    #define DOCOPT_INLINE inline
-    #define DOCOPTAPI
+	#define DOCOPT_INLINE inline
+	#define DOCOPTAPI
 #else 
-    #define DOCOPT_INLINE
+	#define DOCOPT_INLINE
 
-    // On Windows, export certain symbols so they are available
-    // to users of docopt.dll (shared library).
-    #ifdef WIN32
-        #ifdef DOCOPT_EXPORTS
-            #define DOCOPTAPI __declspec(dllexport)
-        #else
-            #define DOCOPTAPI __declspec(dllimport)
-        #endif
-    #else
-        #define DOCOPTAPI
-    #endif
+	// On Windows, export certain symbols so they are available
+	// to users of docopt.dll (shared library).
+	#ifdef WIN32
+		#ifdef DOCOPT_EXPORTS
+			#define DOCOPTAPI __declspec(dllexport)
+		#else
+			#define DOCOPTAPI __declspec(dllimport)
+		#endif
+	#else
+		#define DOCOPTAPI
+	#endif
 #endif
 
 namespace docopt {
-	
+
 	// Usage string could not be parsed (ie, the developer did something wrong)
-	struct DocoptLanguageError : std::runtime_error { using runtime_error::runtime_error; };
-	
+	struct DocoptLanguageError : std::runtime_error
+	{
+		DocoptLanguageError(const std::string& str) : std::runtime_error(str) {}
+	};
+
 	// Arguments passed by user were incorrect (ie, developer was good, user is wrong)
-	struct DocoptArgumentError : std::runtime_error { using runtime_error::runtime_error; };
-	
+	struct DocoptArgumentError : std::runtime_error
+	{
+		DocoptArgumentError(const std::string& str) : std::runtime_error(str) {}
+	};
+
 	// Arguments contained '--help' and parsing was aborted early
 	struct DocoptExitHelp : std::runtime_error { DocoptExitHelp() : std::runtime_error("Docopt --help argument encountered"){} };
 
@@ -62,10 +68,10 @@ namespace docopt {
 	/// @throws DocoptExitVersion if 'version' is true and the user has passed the '--version' argument
 	/// @throws DocoptArgumentError if the user's argv did not match the usage patterns
 	std::map<std::string, value> DOCOPTAPI docopt_parse(std::string const& doc,
-					    std::vector<std::string> const& argv,
-					    bool help = true,
-					    bool version = true,
-					    bool options_first = false);
+						std::vector<std::string> const& argv,
+						bool help = true,
+						bool version = true,
+						bool options_first = false);
 	
 	/// Parse user options from the given string, and exit appropriately
 	///
@@ -75,14 +81,14 @@ namespace docopt {
 	///  * DocoptExitVersion - print version and terminate (with exit code 0)
 	///  * DocoptArgumentError - print error and usage string and terminate (with exit code -1)
 	std::map<std::string, value> DOCOPTAPI docopt(std::string const& doc,
-					    std::vector<std::string> const& argv,
-					    bool help = true,
-					    std::string const& version = {},
-					    bool options_first = false) noexcept;
+						std::vector<std::string> const& argv,
+						bool help = true,
+						std::string const& version = "",
+						bool options_first = false) BOOST_NOEXCEPT;
 }
 
 #ifdef DOCOPT_HEADER_ONLY
-    #include "docopt.cpp"
+	#include "docopt.cpp"
 #endif
 
 #endif /* defined(docopt__docopt_h_) */

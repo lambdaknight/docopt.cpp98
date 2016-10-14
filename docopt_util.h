@@ -12,8 +12,8 @@
 #if DOCTOPT_USE_BOOST_REGEX
 #include <boost/regex.hpp>
 namespace std {
-    using boost::regex;
-    using boost::sregex_token_iterator;
+	using boost::regex;
+	using boost::sregex_token_iterator;
 }
 #else
 #include <regex>
@@ -23,6 +23,13 @@ namespace std {
 #pragma mark General utility
 
 namespace {
+	struct StringTriplet
+	{
+		std::string first;
+		std::string second;
+		std::string third;
+	};
+
 	bool starts_with(std::string const& str, std::string const& prefix)
 	{
 		if (str.length() < prefix.length())
@@ -34,12 +41,12 @@ namespace {
 	std::string trim(std::string&& str,
 			 const std::string& whitespace = " \t\n")
 	{
-		const auto strEnd = str.find_last_not_of(whitespace);
+		const unsigned long strEnd = str.find_last_not_of(whitespace);
 		if (strEnd==std::string::npos)
-			return {}; // no content
+			return ""; // no content
 		str.erase(strEnd+1);
 
-		const auto strBegin = str.find_first_not_of(whitespace);
+		const unsigned long strBegin = str.find_first_not_of(whitespace);
 		str.erase(0, strBegin);
 
 		return std::move(str);
@@ -51,11 +58,11 @@ namespace {
 
 		std::vector<std::string> ret;
 		while (pos != std::string::npos) {
-			auto start = str.find_first_not_of(anySpace, pos);
+			unsigned long start = str.find_first_not_of(anySpace, pos);
 			if (start == std::string::npos) break;
 
-			auto end = str.find_first_of(anySpace, start);
-			auto size = end==std::string::npos ? end : end-start;
+			unsigned long end = str.find_first_of(anySpace, start);
+			unsigned long size = end == std::string::npos ? end : end - start;
 			ret.emplace_back(str.substr(start, size));
 
 			pos = end;
@@ -64,20 +71,20 @@ namespace {
 		return ret;
 	}
 
-	std::tuple<std::string, std::string, std::string> partition(std::string str, std::string const& point)
+	StringTriplet partition(std::string str, std::string const& point)
 	{
-		std::tuple<std::string, std::string, std::string> ret;
+		StringTriplet ret;
 
-		auto i = str.find(point);
+		unsigned long i = str.find(point);
 
 		if (i == std::string::npos) {
 			// no match: string goes in 0th spot only
 		} else {
-			std::get<2>(ret) = str.substr(i + point.size());
-			std::get<1>(ret) = point;
+			ret.third = str.substr(i + point.size());
+			ret.second = point;
 			str.resize(i);
 		}
-		std::get<0>(ret) = std::move(str);
+		ret.first = std::move(str);
 
 		return ret;
 	}
@@ -85,7 +92,7 @@ namespace {
 	template <typename I>
 	std::string join(I iter, I end, std::string const& delim) {
 		if (iter==end)
-			return {};
+			return "";
 
 		std::string ret = *iter;
 		for(++iter; iter!=end; ++iter) {
@@ -98,9 +105,9 @@ namespace {
 	std::vector<std::string> regex_split(std::string const& text, std::regex const& re)
 	{
 		std::vector<std::string> ret;
-		for (auto it = std::sregex_token_iterator(text.begin(), text.end(), re, -1);
-			it != std::sregex_token_iterator();
-			++it) {
+		for (std::sregex_token_iterator it(text.begin(), text.end(), re, -1);
+			 it != std::sregex_token_iterator();
+			 ++it) {
 			ret.emplace_back(*it);
 		}
 		return ret;
