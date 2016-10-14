@@ -39,6 +39,8 @@ namespace std {
 #include <regex>
 #endif
 
+#include <boost/make_shared.hpp>
+
 #include "docopt_value.h"
 
 namespace docopt {
@@ -46,12 +48,12 @@ namespace docopt {
 	class Pattern;
 	class LeafPattern;
 
-	using PatternList = std::vector<std::shared_ptr<Pattern> >;
+	using PatternList = std::vector<boost::shared_ptr<Pattern> >;
 
 	// Utility to use Pattern types in std hash-containers
 	struct PatternHasher {
 		template <typename P>
-		size_t operator()(std::shared_ptr<P> const& pattern) const {
+		size_t operator()(boost::shared_ptr<P> const& pattern) const {
 			return pattern->hash();
 		}
 		template <typename P>
@@ -67,7 +69,7 @@ namespace docopt {
 	// Utility to use 'hash' as the equality operator as well in std containers
 	struct PatternPointerEquality {
 		template <typename P1, typename P2>
-		bool operator()(std::shared_ptr<P1> const& p1, std::shared_ptr<P2> const& p2) const {
+		bool operator()(boost::shared_ptr<P1> const& p1, boost::shared_ptr<P2> const& p2) const {
 			return p1->hash()==p2->hash();
 		}
 		template <typename P1, typename P2>
@@ -77,7 +79,7 @@ namespace docopt {
 	};
 
 	// A hash-set that uniques by hash value
-	using UniquePatternSet = std::unordered_set<std::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>;
+	using UniquePatternSet = std::unordered_set<boost::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>;
 
 
 	class Pattern {
@@ -92,7 +94,7 @@ namespace docopt {
 		std::vector<LeafPattern*> leaves();
 
 		// Attempt to find something in 'left' that matches this pattern's spec, and if so, move it to 'collected'
-		virtual bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const = 0;
+		virtual bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const = 0;
 
 		virtual std::string const& name() const = 0;
 
@@ -121,7 +123,7 @@ namespace docopt {
 			lst.push_back(this);
 		}
 
-		virtual bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		virtual bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
 
 		virtual bool hasValue() const OVERRIDE { return static_cast<bool>(fValue); }
 
@@ -138,7 +140,7 @@ namespace docopt {
 		}
 
 	protected:
-		virtual std::pair<size_t, std::shared_ptr<LeafPattern> > single_match(PatternList const&) const = 0;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const&) const = 0;
 
 	private:
 		std::string fName;
@@ -206,7 +208,7 @@ namespace docopt {
 				}
 
 				// then we try to add it to the list
-				std::pair<std::unordered_set<std::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>::iterator, bool> inserted = patterns.insert(*child);
+				std::pair<std::unordered_set<boost::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>::iterator, bool> inserted = patterns.insert(*child);
 				if (!inserted.second) {
 					// already there? then reuse the existing shared_ptr for that thing
 					*child = *inserted.first;
@@ -236,7 +238,7 @@ namespace docopt {
 		Argument(std::string name, value v = value()) : LeafPattern(name, v) {}
 
 	protected:
-		virtual std::pair<size_t, std::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
 	};
 
 	class Command : public Argument {
@@ -246,7 +248,7 @@ namespace docopt {
 		{}
 
 	protected:
-		virtual std::pair<size_t, std::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
 	};
 
 	class Option FINAL
@@ -292,7 +294,7 @@ namespace docopt {
 		}
 
 	protected:
-		virtual std::pair<size_t, std::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
 
 	private:
 		std::string fShortOption;
@@ -304,14 +306,14 @@ namespace docopt {
 	public:
 		Required(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
 	};
 
 	class Optional : public BranchPattern {
 	public:
 		Optional(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const OVERRIDE {
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE {
 			for(PatternList::const_iterator pattern = fChildren.begin(); pattern != fChildren.end(); ++pattern)
 			{
 				(*pattern)->match(left, collected);
@@ -329,14 +331,14 @@ namespace docopt {
 	public:
 		OneOrMore(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
 	};
 
 	class Either : public BranchPattern {
 	public:
 		Either(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
 	};
 
 #pragma mark -
@@ -358,11 +360,11 @@ namespace docopt {
 
 		while(!groups.empty()) {
 			// pop off the first element
-			std::vector<std::shared_ptr<Pattern> > children = std::move(groups[0]);
+			std::vector<boost::shared_ptr<Pattern> > children = std::move(groups[0]);
 			groups.erase(groups.begin());
 
 			// find the first branch node in the list
-			std::vector<std::shared_ptr<Pattern> >::iterator child_iter = children.begin();
+			std::vector<boost::shared_ptr<Pattern> >::iterator child_iter = children.begin();
 			for (; child_iter != children.end(); ++child_iter)
 			{
 				if (dynamic_cast<BranchPattern const*>(child_iter->get()))
@@ -376,7 +378,7 @@ namespace docopt {
 			}
 
 			// pop the child from the list
-			std::shared_ptr<Pattern> child = std::move(*child_iter);
+			boost::shared_ptr<Pattern> child = std::move(*child_iter);
 			children.erase(child_iter);
 
 			// expand the branch in the appropriate way
@@ -418,8 +420,8 @@ namespace docopt {
 		for(std::vector<PatternList>::const_iterator group = either.begin(); group != either.end(); ++group)
 		{
 			// use multiset to help identify duplicate entries
-			std::unordered_multiset<std::shared_ptr<Pattern>, PatternHasher> group_set(group->begin(), group->end());
-			for(std::unordered_multiset<std::shared_ptr<Pattern>, PatternHasher>::const_iterator e = group_set.begin(); e != group_set.end(); ++e) {
+			std::unordered_multiset<boost::shared_ptr<Pattern>, PatternHasher> group_set(group->begin(), group->end());
+			for(std::unordered_multiset<boost::shared_ptr<Pattern>, PatternHasher>::const_iterator e = group_set.begin(); e != group_set.end(); ++e) {
 				if (group_set.count(*e) == 1)
 					continue;
 
@@ -456,16 +458,16 @@ namespace docopt {
 		}
 	}
 
-	inline bool LeafPattern::match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const
+	inline bool LeafPattern::match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const
 	{
-		std::pair<size_t, std::shared_ptr<LeafPattern> > match = single_match(left);
+		std::pair<size_t, boost::shared_ptr<LeafPattern> > match = single_match(left);
 		if (!match.second) {
 			return false;
 		}
 
 		left.erase(left.begin()+static_cast<std::ptrdiff_t>(match.first));
 
-		std::vector<std::shared_ptr<LeafPattern> >::iterator same_name = collected.begin();
+		std::vector<boost::shared_ptr<LeafPattern> >::iterator same_name = collected.begin();
 		for(; same_name != collected.end(); ++same_name)
 		{
 			if((*same_name)->name() == name())
@@ -508,16 +510,16 @@ namespace docopt {
 		return true;
 	}
 
-	inline std::pair<size_t, std::shared_ptr<LeafPattern> > Argument::single_match(PatternList const& left) const
+	inline std::pair<size_t, boost::shared_ptr<LeafPattern> > Argument::single_match(PatternList const& left) const
 	{
-		std::pair<size_t, std::shared_ptr<LeafPattern> > ret;
+		std::pair<size_t, boost::shared_ptr<LeafPattern> > ret;
 
 		for(size_t i = 0, size = left.size(); i < size; ++i)
 		{
 			const Argument* arg = dynamic_cast<Argument const*>(left[i].get());
 			if (arg) {
 				ret.first = i;
-				ret.second = std::make_shared<Argument>(name(), arg->getValue());
+				ret.second = boost::make_shared<Argument>(name(), arg->getValue());
 				break;
 			}
 		}
@@ -525,9 +527,9 @@ namespace docopt {
 		return ret;
 	}
 
-	inline std::pair<size_t, std::shared_ptr<LeafPattern> > Command::single_match(PatternList const& left) const
+	inline std::pair<size_t, boost::shared_ptr<LeafPattern> > Command::single_match(PatternList const& left) const
 	{
-		std::pair<size_t, std::shared_ptr<LeafPattern> > ret;
+		std::pair<size_t, boost::shared_ptr<LeafPattern> > ret;
 
 		for(size_t i = 0, size = left.size(); i < size; ++i)
 		{
@@ -535,7 +537,7 @@ namespace docopt {
 			if (arg) {
 				if (name() == arg->getValue()) {
 					ret.first = i;
-					ret.second = std::make_shared<Command>(name(), value(true));
+					ret.second = boost::make_shared<Command>(name(), value(true));
 				}
 				break;
 			}
@@ -597,14 +599,14 @@ namespace docopt {
 		return Option(std::move(shortOption), std::move(longOption), argcount, std::move(val));
 	}
 
-	inline std::pair<size_t, std::shared_ptr<LeafPattern> > Option::single_match(PatternList const& left) const
+	inline std::pair<size_t, boost::shared_ptr<LeafPattern> > Option::single_match(PatternList const& left) const
 	{
-		std::pair<size_t, std::shared_ptr<LeafPattern> > ret;
+		std::pair<size_t, boost::shared_ptr<LeafPattern> > ret;
 
 		PatternList::const_iterator thematch = left.begin();
 		for (; thematch != left.end(); ++thematch)
 		{
-			std::shared_ptr<LeafPattern> leaf = std::dynamic_pointer_cast<LeafPattern>(*thematch);
+			boost::shared_ptr<LeafPattern> leaf = boost::dynamic_pointer_cast<LeafPattern>(*thematch);
 			if (leaf && this->name() == leaf->name())
 				break;
 		}
@@ -614,13 +616,13 @@ namespace docopt {
 			return ret;
 		}
 		ret.first = std::distance(left.begin(), thematch);
-		ret.second = std::dynamic_pointer_cast<LeafPattern>(*thematch);
+		ret.second = boost::dynamic_pointer_cast<LeafPattern>(*thematch);
 		return ret;
 	}
 
-	inline bool Required::match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const {
+	inline bool Required::match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const {
 		PatternList l = left;
-		std::vector<std::shared_ptr<LeafPattern>> c = collected;
+		std::vector<boost::shared_ptr<LeafPattern> > c = collected;
 
 		for(PatternList::const_iterator pattern = fChildren.begin(); pattern != fChildren.end(); ++pattern)
 		{
@@ -636,12 +638,12 @@ namespace docopt {
 		return true;
 	}
 
-	inline bool OneOrMore::match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const
+	inline bool OneOrMore::match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const
 	{
 		assert(fChildren.size() == 1);
 
 		PatternList l = left;
-		std::vector<std::shared_ptr<LeafPattern>> c = collected;
+		std::vector<boost::shared_ptr<LeafPattern> > c = collected;
 
 		bool matched = true;
 		size_t times = 0;
@@ -674,9 +676,9 @@ namespace docopt {
 		return true;
 	}
 
-	inline bool Either::match(PatternList& left, std::vector<std::shared_ptr<LeafPattern> >& collected) const
+	inline bool Either::match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const
 	{
-		using Outcome = std::pair<PatternList, std::vector<std::shared_ptr<LeafPattern> > >;
+		using Outcome = std::pair<PatternList, std::vector<boost::shared_ptr<LeafPattern> > >;
 
 		std::vector<Outcome> outcomes;
 
@@ -684,7 +686,7 @@ namespace docopt {
 		{
 			// need a copy so we apply the same one for every iteration
 			PatternList l = left;
-			std::vector<std::shared_ptr<LeafPattern>> c = collected;
+			std::vector<boost::shared_ptr<LeafPattern> > c = collected;
 			bool matched = (*pattern)->match(l, c);
 			if (matched) {
 				outcomes.push_back(Outcome(std::move(l), std::move(c)));

@@ -22,6 +22,8 @@
 #include <cstddef>
 
 #include <boost/format.hpp>
+#include <boost/make_shared.hpp>
+#include <boost/pointer_cast.hpp>
 
 using namespace docopt;
 
@@ -255,13 +257,13 @@ static PatternList parse_long(Tokens& tokens, std::vector<Option>& options)
 		int argcount = equal.empty() ? 0 : 1;
 		options.push_back(Option("", longOpt, argcount));
 
-		std::shared_ptr<Option> o = std::make_shared<Option>(options.back());
+		boost::shared_ptr<Option> o = boost::make_shared<Option>(options.back());
 		if (tokens.isParsingArgv()) {
 			o->setValue(argcount ? value(val) : value(true));
 		}
 		ret.push_back(o);
 	} else {
-		std::shared_ptr<Option> o = std::make_shared<Option>(*similar[0]);
+		boost::shared_ptr<Option> o = boost::make_shared<Option>(*similar[0]);
 		if (o->argCount() == 0) {
 			if (val) {
 				std::string error = o->longOption() + " must not have an argument";
@@ -317,13 +319,13 @@ static PatternList parse_short(Tokens& tokens, std::vector<Option>& options)
 		} else if (similar.empty()) {
 			options.push_back(Option(shortOpt, "", 0));
 
-			std::shared_ptr<Option> o = std::make_shared<Option>(options.back());
+			boost::shared_ptr<Option> o = boost::make_shared<Option>(options.back());
 			if (tokens.isParsingArgv()) {
 				o->setValue(value(true));
 			}
 			ret.push_back(o);
 		} else {
-			std::shared_ptr<Option> o = std::make_shared<Option>(*similar[0]);
+			boost::shared_ptr<Option> o = boost::make_shared<Option>(*similar[0]);
 			value val;
 			if (o->argCount()) {
 				if (i == token.end()) {
@@ -372,7 +374,7 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '['");
 		}
 
-		ret.push_back(std::make_shared<Optional>(std::move(expr)));
+		ret.push_back(boost::make_shared<Optional>(std::move(expr)));
 	} else if (token=="(") {
 		tokens.pop();
 
@@ -383,18 +385,18 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '('");
 		}
 
-		ret.push_back(std::make_shared<Required>(std::move(expr)));
+		ret.push_back(boost::make_shared<Required>(std::move(expr)));
 	} else if (token == "options") {
 		tokens.pop();
-		ret.push_back(std::make_shared<OptionsShortcut>());
+		ret.push_back(boost::make_shared<OptionsShortcut>());
 	} else if (starts_with(token, "--") && token != "--") {
 		ret = parse_long(tokens, options);
 	} else if (starts_with(token, "-") && token != "-" && token != "--") {
 		ret = parse_short(tokens, options);
 	} else if (is_argument_spec(token)) {
-		ret.push_back(std::make_shared<Argument>(tokens.pop()));
+		ret.push_back(boost::make_shared<Argument>(tokens.pop()));
 	} else {
-		ret.push_back(std::make_shared<Command>(tokens.pop()));
+		ret.push_back(boost::make_shared<Command>(tokens.pop()));
 	}
 
 	return ret;
@@ -414,7 +416,7 @@ static PatternList parse_seq(Tokens& tokens, std::vector<Option>& options)
 
 		PatternList atom = parse_atom(tokens, options);
 		if (tokens.current() == "...") {
-			ret.push_back(std::make_shared<OneOrMore>(std::move(atom)));
+			ret.push_back(boost::make_shared<OneOrMore>(std::move(atom)));
 			tokens.pop();
 		} else {
 			std::move(atom.begin(), atom.end(), std::back_inserter(ret));
@@ -424,20 +426,20 @@ static PatternList parse_seq(Tokens& tokens, std::vector<Option>& options)
 	return ret;
 }
 
-static std::shared_ptr<Pattern> maybe_collapse_to_required(PatternList&& seq)
+static boost::shared_ptr<Pattern> maybe_collapse_to_required(PatternList&& seq)
 {
 	if (seq.size()==1) {
 		return std::move(seq[0]);
 	}
-	return std::make_shared<Required>(std::move(seq));
+	return boost::make_shared<Required>(std::move(seq));
 }
 
-static std::shared_ptr<Pattern> maybe_collapse_to_either(PatternList&& seq)
+static boost::shared_ptr<Pattern> maybe_collapse_to_either(PatternList&& seq)
 {
 	if (seq.size()==1) {
 		return std::move(seq[0]);
 	}
-	return std::make_shared<Either>(std::move(seq));
+	return boost::make_shared<Either>(std::move(seq));
 }
 
 PatternList parse_expr(Tokens& tokens, std::vector<Option>& options)
@@ -508,7 +510,7 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 		if (token=="--") {
 			// option list is done; convert all the rest to arguments
 			while (tokens) {
-				ret.push_back(std::make_shared<Argument>("", tokens.pop()));
+				ret.push_back(boost::make_shared<Argument>("", tokens.pop()));
 			}
 		} else if (starts_with(token, "--")) {
 			PatternList&& parsed = parse_long(tokens, options);
@@ -519,10 +521,10 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 		} else if (options_first) {
 			// option list is done; convert all the rest to arguments
 			while (tokens) {
-				ret.push_back(std::make_shared<Argument>("", tokens.pop()));
+				ret.push_back(boost::make_shared<Argument>("", tokens.pop()));
 			}
 		} else {
-			ret.push_back(std::make_shared<Argument>("", tokens.pop()));
+			ret.push_back(boost::make_shared<Argument>("", tokens.pop()));
 		}
 	}
 
@@ -617,7 +619,7 @@ static std::pair<Required, std::vector<Option> > create_pattern_tree(std::string
 
 		for(UniqueOptions::const_iterator opt = uniq_doc_options.begin(); opt != uniq_doc_options.end(); ++opt)
 		{
-			children.push_back(std::make_shared<Option>(**opt));
+			children.push_back(boost::make_shared<Option>(**opt));
 		}
 
 		(*options_shortcut)->setChildren(children);
@@ -654,7 +656,7 @@ docopt::docopt_parse(std::string const& doc,
 
 	extras(help, version, argv_patterns);
 
-	std::vector<std::shared_ptr<LeafPattern> > collected;
+	std::vector<boost::shared_ptr<LeafPattern> > collected;
 	bool matched = pattern.fix().match(argv_patterns, collected);
 	if (matched && argv_patterns.empty()) {
 		std::map<std::string, value> ret;
@@ -666,7 +668,7 @@ docopt::docopt_parse(std::string const& doc,
 			ret[(*p)->name()] = (*p)->getValue();
 		}
 
-		for(std::vector<std::shared_ptr<LeafPattern> >::const_iterator p = collected.begin(); p != collected.end(); ++p)
+		for(std::vector<boost::shared_ptr<LeafPattern> >::const_iterator p = collected.begin(); p != collected.end(); ++p)
 		{
 			ret[(*p)->name()] = (*p)->getValue();
 		}
