@@ -451,16 +451,18 @@ PatternList parse_expr(Tokens& tokens, std::vector<Option>& options)
 	if (tokens.current() != "|")
 		return seq;
 
-	PatternList ret;
-	ret.push_back(maybe_collapse_to_required(std::move(seq)));
+	PatternList patternList;
+	patternList.push_back(maybe_collapse_to_required(PatternList(std::move(seq))));
 
 	while (tokens.current() == "|") {
 		tokens.pop();
 		seq = parse_seq(tokens, options);
-		ret.push_back(maybe_collapse_to_required(std::move(seq)));
+		patternList.push_back(maybe_collapse_to_required(PatternList(std::move(seq))));
 	}
 
-	return { maybe_collapse_to_either(std::move(ret)) };
+	PatternList ret;
+	ret.push_back(maybe_collapse_to_either(PatternList(std::move(patternList))));
+	return ret;
 }
 
 static Required parse_pattern(std::string const& source, std::vector<Option>& options)
