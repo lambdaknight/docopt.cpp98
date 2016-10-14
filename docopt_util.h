@@ -63,7 +63,7 @@ namespace {
 
 			unsigned long end = str.find_first_of(anySpace, start);
 			unsigned long size = end == std::string::npos ? end : end - start;
-			ret.emplace_back(str.substr(start, size));
+			ret.push_back(str.substr(start, size));
 
 			pos = end;
 		}
@@ -108,7 +108,7 @@ namespace {
 		for (std::sregex_token_iterator it(text.begin(), text.end(), re, -1);
 			 it != std::sregex_token_iterator();
 			 ++it) {
-			ret.emplace_back(*it);
+			ret.push_back(*it);
 		}
 		return ret;
 	}

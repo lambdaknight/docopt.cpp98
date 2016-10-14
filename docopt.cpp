@@ -253,7 +253,7 @@ static PatternList parse_long(Tokens& tokens, std::vector<Option>& options)
 		throw Tokens::OptionError(std::move(error));
 	} else if (similar.empty()) {
 		int argcount = equal.empty() ? 0 : 1;
-		options.emplace_back("", longOpt, argcount);
+		options.push_back(Option("", longOpt, argcount));
 
 		std::shared_ptr<Option> o = std::make_shared<Option>(options.back());
 		if (tokens.isParsingArgv()) {
@@ -315,7 +315,7 @@ static PatternList parse_short(Tokens& tokens, std::vector<Option>& options)
 			+ std::to_string(similar.size()) + " times";
 			throw Tokens::OptionError(std::move(error));
 		} else if (similar.empty()) {
-			options.emplace_back(shortOpt, "", 0);
+			options.push_back(Option(shortOpt, "", 0));
 
 			std::shared_ptr<Option> o = std::make_shared<Option>(options.back());
 			if (tokens.isParsingArgv()) {
@@ -372,7 +372,7 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '['");
 		}
 
-		ret.emplace_back(std::make_shared<Optional>(std::move(expr)));
+		ret.push_back(std::make_shared<Optional>(std::move(expr)));
 	} else if (token=="(") {
 		tokens.pop();
 
@@ -383,18 +383,18 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '('");
 		}
 
-		ret.emplace_back(std::make_shared<Required>(std::move(expr)));
+		ret.push_back(std::make_shared<Required>(std::move(expr)));
 	} else if (token == "options") {
 		tokens.pop();
-		ret.emplace_back(std::make_shared<OptionsShortcut>());
+		ret.push_back(std::make_shared<OptionsShortcut>());
 	} else if (starts_with(token, "--") && token != "--") {
 		ret = parse_long(tokens, options);
 	} else if (starts_with(token, "-") && token != "-" && token != "--") {
 		ret = parse_short(tokens, options);
 	} else if (is_argument_spec(token)) {
-		ret.emplace_back(std::make_shared<Argument>(tokens.pop()));
+		ret.push_back(std::make_shared<Argument>(tokens.pop()));
 	} else {
-		ret.emplace_back(std::make_shared<Command>(tokens.pop()));
+		ret.push_back(std::make_shared<Command>(tokens.pop()));
 	}
 
 	return ret;
@@ -414,7 +414,7 @@ static PatternList parse_seq(Tokens& tokens, std::vector<Option>& options)
 
 		PatternList atom = parse_atom(tokens, options);
 		if (tokens.current() == "...") {
-			ret.emplace_back(std::make_shared<OneOrMore>(std::move(atom)));
+			ret.push_back(std::make_shared<OneOrMore>(std::move(atom)));
 			tokens.pop();
 		} else {
 			std::move(atom.begin(), atom.end(), std::back_inserter(ret));
@@ -450,12 +450,12 @@ PatternList parse_expr(Tokens& tokens, std::vector<Option>& options)
 		return seq;
 
 	PatternList ret;
-	ret.emplace_back(maybe_collapse_to_required(std::move(seq)));
+	ret.push_back(maybe_collapse_to_required(std::move(seq)));
 
 	while (tokens.current() == "|") {
 		tokens.pop();
 		seq = parse_seq(tokens, options);
-		ret.emplace_back(maybe_collapse_to_required(std::move(seq)));
+		ret.push_back(maybe_collapse_to_required(std::move(seq)));
 	}
 
 	return { maybe_collapse_to_either(std::move(ret)) };
@@ -508,7 +508,7 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 		if (token=="--") {
 			// option list is done; convert all the rest to arguments
 			while (tokens) {
-				ret.emplace_back(std::make_shared<Argument>("", tokens.pop()));
+				ret.push_back(std::make_shared<Argument>("", tokens.pop()));
 			}
 		} else if (starts_with(token, "--")) {
 			PatternList&& parsed = parse_long(tokens, options);
@@ -519,10 +519,10 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 		} else if (options_first) {
 			// option list is done; convert all the rest to arguments
 			while (tokens) {
-				ret.emplace_back(std::make_shared<Argument>("", tokens.pop()));
+				ret.push_back(std::make_shared<Argument>("", tokens.pop()));
 			}
 		} else {
-			ret.emplace_back(std::make_shared<Argument>("", tokens.pop()));
+			ret.push_back(std::make_shared<Argument>("", tokens.pop()));
 		}
 	}
 
@@ -579,7 +579,7 @@ static void extras(bool help, bool version, PatternList const& options) {
 }
 
 // Parse the doc string and generate the Pattern tree
-static std::pair<Required, std::vector<Option>> create_pattern_tree(std::string const& doc)
+static std::pair<Required, std::vector<Option> > create_pattern_tree(std::string const& doc)
 {
 	std::vector<std::string> usage_sections = parse_section("usage:", doc);
 	if (usage_sections.empty()) {
@@ -654,7 +654,7 @@ docopt::docopt_parse(std::string const& doc,
 
 	extras(help, version, argv_patterns);
 
-	std::vector<std::shared_ptr<LeafPattern>> collected;
+	std::vector<std::shared_ptr<LeafPattern> > collected;
 	bool matched = pattern.fix().match(argv_patterns, collected);
 	if (matched && argv_patterns.empty()) {
 		std::map<std::string, value> ret;

@@ -354,7 +354,7 @@ namespace docopt {
 		std::vector<PatternList> result;
 
 		std::vector<PatternList> groups;
-		groups.emplace_back(std::move(pattern));
+		groups.push_back(std::move(pattern));
 
 		while(!groups.empty()) {
 			// pop off the first element
@@ -371,7 +371,7 @@ namespace docopt {
 
 			// no branch nodes left : expansion is complete for this grouping
 			if (child_iter == children.end()) {
-				result.emplace_back(std::move(children));
+				result.push_back(std::move(children));
 				continue;
 			}
 
@@ -388,7 +388,7 @@ namespace docopt {
 					group.push_back(*eitherChild);
 					group.insert(group.end(), children.begin(), children.end());
 
-					groups.emplace_back(std::move(group));
+					groups.push_back(std::move(group));
 				}
 			} else if (OneOrMore* oneOrMore = dynamic_cast<OneOrMore*>(child.get())) {
 				// child.children * 2 + children
@@ -397,7 +397,7 @@ namespace docopt {
 				group.insert(group.end(), subchildren.begin(), subchildren.end());
 				group.insert(group.end(), children.begin(), children.end());
 
-				groups.emplace_back(std::move(group));
+				groups.push_back(std::move(group));
 			} else { // Required, Optional, OptionsShortcut
 				BranchPattern* branch = dynamic_cast<BranchPattern*>(child.get());
 
@@ -405,7 +405,7 @@ namespace docopt {
 				PatternList group = branch->children();
 				group.insert(group.end(), children.begin(), children.end());
 
-				groups.emplace_back(std::move(group));
+				groups.push_back(std::move(group));
 			}
 		}
 
@@ -687,7 +687,7 @@ namespace docopt {
 			std::vector<std::shared_ptr<LeafPattern>> c = collected;
 			bool matched = (*pattern)->match(l, c);
 			if (matched) {
-				outcomes.emplace_back(std::move(l), std::move(c));
+				outcomes.push_back(Outcome(std::move(l), std::move(c)));
 			}
 		}
 
