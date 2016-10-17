@@ -23,22 +23,8 @@
 #    define FINAL final
 #endif
 
-// Workaround GCC 4.8 not having std::regex
-#if DOCTOPT_USE_BOOST_REGEX
+// Workaround GCC 4.8 not having boost::regex
 #include <boost/regex.hpp>
-namespace std {
-	using boost::regex;
-	using boost::sregex_iterator;
-	using boost::smatch;
-	using boost::regex_search;
-	namespace regex_constants {
-		using boost::regex_constants::match_not_null;
-	}
-}
-#else
-#include <regex>
-#endif
-
 #include <boost/make_shared.hpp>
 
 #include "docopt_value.h"
@@ -558,13 +544,13 @@ namespace docopt {
 			options_end = option_description.begin() + static_cast<std::ptrdiff_t>(double_space);
 		}
 
-		static const std::regex pattern("(-{1,2})?(.*?)([,= ]|$)");
-		for(std::sregex_iterator i(option_description.begin(), options_end, pattern, std::regex_constants::match_not_null),
+		static const boost::regex pattern("(-{1,2})?(.*?)([,= ]|$)");
+		for(boost::sregex_iterator i(option_description.begin(), options_end, pattern, boost::regex_constants::match_not_null),
 			e;
 			i != e;
 			++i)
 		{
-			std::smatch const& match = *i;
+			boost::smatch const& match = *i;
 			if (match[1].matched) { // [1] is optional.
 				if (match[1].length()==1) {
 						shortOption = "-" + match[2].str();
@@ -587,10 +573,10 @@ namespace docopt {
 		}
 
 		if (argcount) {
-			std::smatch match;
-			if (std::regex_search(options_end, option_description.end(),
+			boost::smatch match;
+			if (boost::regex_search(options_end, option_description.end(),
 						  match,
-						  std::regex("\\[default: (.*)\\]", std::regex::icase)))
+						  boost::regex("\\[default: (.*)\\]", boost::regex::icase)))
 			{
 				val = match[1].str();
 			}

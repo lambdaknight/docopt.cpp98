@@ -72,7 +72,7 @@ public:
 	}
 
 	static Tokens from_pattern(std::string const& source) {
-		static const std::regex re_separators(
+		static const boost::regex re_separators(
 			"(?:\\s*)" // any spaces (non-matching subgroup)
 			"("
 			"[\\[\\]\\(\\)\\|]" // one character of brackets or parens or pipe character
@@ -80,7 +80,7 @@ public:
 			"\\.\\.\\."  // elipsis
 			")");
 
-		static const std::regex re_strings(
+		static const boost::regex re_strings(
 			"(?:\\s*)" // any spaces (non-matching subgroup)
 			"("
 			"\\S*<.*?>"  // strings, but make sure to keep "< >" strings together
@@ -95,12 +95,12 @@ public:
 		// and we dont have anything like that.
 
 		std::vector<std::string> tokens;
-		for(std::sregex_iterator match(source.begin(), source.end(), re_separators); match != std::sregex_iterator(); ++match)
+		for(boost::sregex_iterator match(source.begin(), source.end(), re_separators); match != boost::sregex_iterator(); ++match)
 		{
 			// handle anything before the separator (this is the "stuff" between the delimeters)
 			if (match->prefix().matched)
 			{
-				for(std::sregex_iterator m(match->prefix().first, match->prefix().second, re_strings); m != std::sregex_iterator(); ++m)
+				for(boost::sregex_iterator m(match->prefix().first, match->prefix().second, re_strings); m != boost::sregex_iterator(); ++m)
 				{
 					tokens.push_back((*m)[1].str());
 				}
@@ -170,17 +170,17 @@ static std::vector<std::string> parse_section(std::string const& name, std::stri
 	// a newline to anchor our matching, we have to avoid matching the final newline of each grouping.
 	// Therefore, our regex is adjusted from the docopt Python one to use ?= to match the newlines before
 	// the following lines, rather than after.
-	std::regex const re_section_pattern(
+	boost::regex const re_section_pattern(
 		"(?:^|\\n)"  // anchored at a linebreak (or start of string)
 		"("
 		   "[^\\n]*" + name + "[^\\n]*(?=\\n?)" // a line that contains the name
 		   "(?:\\n[ \\t].*?(?=\\n|$))*"         // followed by any number of lines that are indented
 		")",
-		std::regex::icase
+		boost::regex::icase
 	);
 
 	std::vector<std::string> ret;
-	for(std::sregex_iterator match(source.begin(), source.end(), re_section_pattern); match != std::sregex_iterator(); ++match)
+	for(boost::sregex_iterator match(source.begin(), source.end(), re_section_pattern); match != boost::sregex_iterator(); ++match)
 	{
 		ret.push_back(trim((*match)[1].str()));
 	}
@@ -552,7 +552,7 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 std::vector<Option> parse_defaults(std::string const& doc) {
 	// This pattern is a delimiter by which we split the options.
 	// The delimiter is a new line followed by a whitespace(s) followed by one or two hyphens.
-	static std::regex const re_delimiter(
+	static boost::regex const re_delimiter(
 		"(?:^|\\n)[ \\t]*"  // a new line with leading whitespace
 		"(?=-{1,2})"        // [split happens here] (positive lookahead) ... and followed by one or two hyphes
 	);
