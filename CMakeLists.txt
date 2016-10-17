@@ -3,10 +3,6 @@ project(docopt.cpp VERSION 0.6.1)
 
 include(GNUInstallDirs)
 
-if (TEST98)
-	set (CMAKE_CXX_STANDARD 98)
-endif ()
-
 #============================================================================
 # Settable options
 #============================================================================
