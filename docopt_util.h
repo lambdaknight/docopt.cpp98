@@ -38,7 +38,7 @@ namespace {
 				  str.begin());
 	}
 
-	std::string trim(std::string&& str,
+	std::string trim(std::string str,
 			 const std::string& whitespace = " \t\n")
 	{
 		const unsigned long strEnd = str.find_last_not_of(whitespace);
@@ -49,7 +49,7 @@ namespace {
 		const unsigned long strBegin = str.find_first_not_of(whitespace);
 		str.erase(0, strBegin);
 
-		return std::move(str);
+		return str;
 	}
 
 	std::vector<std::string> split(std::string const& str, size_t pos = 0)
@@ -84,7 +84,7 @@ namespace {
 			ret.second = point;
 			str.resize(i);
 		}
-		ret.first = std::move(str);
+		ret.first = str;
 
 		return ret;
 	}
@@ -111,16 +111,6 @@ namespace {
 			ret.push_back(*it);
 		}
 		return ret;
-	}
-}
-
-namespace docopt {
-	template <class T>
-	inline void hash_combine(std::size_t& seed, T const& v)
-	{
-		// stolen from boost::hash_combine
-		std::hash<T> hasher;
-		seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
 	}
 }
 

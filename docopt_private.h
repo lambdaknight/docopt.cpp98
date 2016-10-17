@@ -11,7 +11,7 @@
 
 #include <vector>
 #include <memory>
-#include <unordered_set>
+#include <set>
 #include <assert.h>
 
 
@@ -48,21 +48,26 @@ namespace docopt {
 	class Pattern;
 	class LeafPattern;
 
-	using PatternList = std::vector<boost::shared_ptr<Pattern> >;
+	typedef std::vector<boost::shared_ptr<Pattern> > PatternList;
 
-	// Utility to use Pattern types in std hash-containers
-	struct PatternHasher {
+	// Utility to use Pattern types in std ordered containers
+	struct PatternLess {
+		template <typename T>
+		bool operator() (const T& x, const T& y) const {
+			return x.hash() < y.hash();
+		}
+
 		template <typename P>
-		size_t operator()(boost::shared_ptr<P> const& pattern) const {
-			return pattern->hash();
+		size_t operator()(boost::shared_ptr<P> const& left_pattern, boost::shared_ptr<P> const& right_pattern) const {
+			return left_pattern->hash()<right_pattern->hash();
 		}
 		template <typename P>
-		size_t operator()(P const* pattern) const {
-			return pattern->hash();
+		size_t operator()(P const* left_pattern, P const* right_pattern) const {
+			return left_pattern->hash()<right_pattern->hash();
 		}
 		template <typename P>
-		size_t operator()(P const& pattern) const {
-			return pattern.hash();
+		size_t operator()(P const& left_pattern, P const& right_pattern) const {
+			return left_pattern.hash()<right_pattern.hash();
 		}
 	};
 
@@ -78,9 +83,8 @@ namespace docopt {
 		}
 	};
 
-	// A hash-set that uniques by hash value
-	using UniquePatternSet = std::unordered_set<boost::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>;
-
+	// An ordered-set that uniques by hash value
+	typedef std::set<boost::shared_ptr<Pattern>, PatternLess, std::allocator<boost::shared_ptr<Pattern> > > UniquePatternSet;
 
 	class Pattern {
 	public:
@@ -107,8 +111,8 @@ namespace docopt {
 	: public Pattern {
 	public:
 		LeafPattern(std::string name, value v = value())
-		: fName(std::move(name)),
-		  fValue(std::move(v))
+		: fName(name),
+		  fValue(v)
 		{}
 
 		virtual std::vector<Pattern*> flat(bool (*filter)(Pattern const*)) OVERRIDE {
@@ -128,14 +132,14 @@ namespace docopt {
 		virtual bool hasValue() const OVERRIDE { return static_cast<bool>(fValue); }
 
 		value const& getValue() const { return fValue; }
-		void setValue(value&& v) { fValue = std::move(v); }
+		void setValue(value v) { fValue = v; }
 
 		virtual std::string const& name() const OVERRIDE { return fName; }
 
 		virtual size_t hash() const OVERRIDE {
-			size_t seed = typeid(*this).hash_code();
-			hash_combine(seed, fName);
-			hash_combine(seed, fValue);
+			size_t seed = boost::hash<std::type_info>()(typeid(*this));
+			boost::hash_combine(seed, fName);
+			boost::hash_combine(seed, fValue);
 			return seed;
 		}
 
@@ -151,7 +155,7 @@ namespace docopt {
 	: public Pattern {
 	public:
 		BranchPattern(PatternList children = PatternList())
-		: fChildren(std::move(children))
+		: fChildren(children)
 		{}
 
 		Pattern& fix() {
@@ -194,7 +198,7 @@ namespace docopt {
 		}
 
 		void setChildren(PatternList children) {
-			fChildren = std::move(children);
+			fChildren = children;
 		}
 
 		PatternList const& children() const { return fChildren; }
@@ -208,7 +212,7 @@ namespace docopt {
 				}
 
 				// then we try to add it to the list
-				std::pair<std::unordered_set<boost::shared_ptr<Pattern>, PatternHasher, PatternPointerEquality>::iterator, bool> inserted = patterns.insert(*child);
+				std::pair<UniquePatternSet::iterator, bool> inserted = patterns.insert(*child);
 				if (!inserted.second) {
 					// already there? then reuse the existing shared_ptr for that thing
 					*child = *inserted.first;
@@ -216,12 +220,13 @@ namespace docopt {
 			}
 		}
 
+
 		virtual size_t hash() const OVERRIDE {
-			size_t seed = typeid(*this).hash_code();
-			hash_combine(seed, fChildren.size());
+			size_t seed = boost::hash<std::type_info>()(typeid(*this));
+			boost::hash_combine(seed, fChildren.size());
 			for(PatternList::const_iterator child = fChildren.begin(); child != fChildren.end(); ++child)
 			{
-				hash_combine(seed, (*child)->hash());
+				boost::hash_combine(seed, (*child)->hash());
 			}
 			return seed;
 		}
@@ -244,7 +249,7 @@ namespace docopt {
 	class Command : public Argument {
 	public:
 		Command(std::string name, value v = value(false))
-		: Argument(std::move(name), std::move(v))
+		: Argument(name, v)
 		{}
 
 	protected:
@@ -261,10 +266,9 @@ namespace docopt {
 			   std::string longOption,
 			   int argcount = 0,
 			   value v = value(false))
-		: LeafPattern(longOption.empty() ? shortOption : longOption,
-				  std::move(v)),
-		  fShortOption(std::move(shortOption)),
-		  fLongOption(std::move(longOption)),
+		: LeafPattern(longOption.empty() ? shortOption : longOption, v),
+		  fShortOption(shortOption),
+		  fLongOption(longOption),
 		  fArgcount(argcount)
 		{
 			// From Python:
@@ -274,11 +278,6 @@ namespace docopt {
 			}
 		}
 
-		Option(Option const&) = default;
-		Option(Option&&) = default;
-		Option& operator=(Option const&) = default;
-		Option& operator=(Option&&) = default;
-
 		using LeafPattern::setValue;
 
 		std::string const& longOption() const { return fLongOption; }
@@ -287,9 +286,9 @@ namespace docopt {
 
 		virtual size_t hash() const OVERRIDE {
 			size_t seed = LeafPattern::hash();
-			hash_combine(seed, fShortOption);
-			hash_combine(seed, fLongOption);
-			hash_combine(seed, fArgcount);
+			boost::hash_combine(seed, fShortOption);
+			boost::hash_combine(seed, fLongOption);
+			boost::hash_combine(seed, fArgcount);
 			return seed;
 		}
 
@@ -356,11 +355,11 @@ namespace docopt {
 		std::vector<PatternList> result;
 
 		std::vector<PatternList> groups;
-		groups.push_back(std::move(pattern));
+		groups.push_back(pattern);
 
 		while(!groups.empty()) {
 			// pop off the first element
-			std::vector<boost::shared_ptr<Pattern> > children = std::move(groups[0]);
+			std::vector<boost::shared_ptr<Pattern> > children = groups[0];
 			groups.erase(groups.begin());
 
 			// find the first branch node in the list
@@ -373,12 +372,12 @@ namespace docopt {
 
 			// no branch nodes left : expansion is complete for this grouping
 			if (child_iter == children.end()) {
-				result.push_back(std::move(children));
+				result.push_back(children);
 				continue;
 			}
 
 			// pop the child from the list
-			boost::shared_ptr<Pattern> child = std::move(*child_iter);
+			boost::shared_ptr<Pattern> child = *child_iter;
 			children.erase(child_iter);
 
 			// expand the branch in the appropriate way
@@ -390,7 +389,7 @@ namespace docopt {
 					group.push_back(*eitherChild);
 					group.insert(group.end(), children.begin(), children.end());
 
-					groups.push_back(std::move(group));
+					groups.push_back(group);
 				}
 			} else if (OneOrMore* oneOrMore = dynamic_cast<OneOrMore*>(child.get())) {
 				// child.children * 2 + children
@@ -399,7 +398,7 @@ namespace docopt {
 				group.insert(group.end(), subchildren.begin(), subchildren.end());
 				group.insert(group.end(), children.begin(), children.end());
 
-				groups.push_back(std::move(group));
+				groups.push_back(group);
 			} else { // Required, Optional, OptionsShortcut
 				BranchPattern* branch = dynamic_cast<BranchPattern*>(child.get());
 
@@ -407,7 +406,7 @@ namespace docopt {
 				PatternList group = branch->children();
 				group.insert(group.end(), children.begin(), children.end());
 
-				groups.push_back(std::move(group));
+				groups.push_back(group);
 			}
 		}
 
@@ -420,8 +419,9 @@ namespace docopt {
 		for(std::vector<PatternList>::const_iterator group = either.begin(); group != either.end(); ++group)
 		{
 			// use multiset to help identify duplicate entries
-			std::unordered_multiset<boost::shared_ptr<Pattern>, PatternHasher> group_set(group->begin(), group->end());
-			for(std::unordered_multiset<boost::shared_ptr<Pattern>, PatternHasher>::const_iterator e = group_set.begin(); e != group_set.end(); ++e) {
+			typedef std::multiset<boost::shared_ptr<Pattern>, PatternLess, std::allocator<boost::shared_ptr<Pattern> > > GroupSet;
+			GroupSet group_set(group->begin(), group->end());
+			for(GroupSet::const_iterator e = group_set.begin(); e != group_set.end(); ++e) {
 				if (group_set.count(*e) == 1)
 					continue;
 
@@ -596,7 +596,7 @@ namespace docopt {
 			}
 		}
 
-		return Option(std::move(shortOption), std::move(longOption), argcount, std::move(val));
+		return Option(shortOption, longOption, argcount, val);
 	}
 
 	inline std::pair<size_t, boost::shared_ptr<LeafPattern> > Option::single_match(PatternList const& left) const
@@ -633,8 +633,8 @@ namespace docopt {
 			}
 		}
 
-		left = std::move(l);
-		collected = std::move(c);
+		left = l;
+		collected = c;
 		return true;
 	}
 
@@ -648,7 +648,7 @@ namespace docopt {
 		bool matched = true;
 		size_t times = 0;
 
-		decltype(l) l_;
+		PatternList l_;
 		bool firstLoop = true;
 
 		while (matched) {
@@ -671,14 +671,15 @@ namespace docopt {
 			return false;
 		}
 
-		left = std::move(l);
-		collected = std::move(c);
+		left = l;
+		collected = c;
 		return true;
 	}
 
+
 	inline bool Either::match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const
 	{
-		using Outcome = std::pair<PatternList, std::vector<boost::shared_ptr<LeafPattern> > >;
+		typedef std::pair<PatternList, std::vector<boost::shared_ptr<LeafPattern> > > Outcome;
 
 		std::vector<Outcome> outcomes;
 
@@ -689,7 +690,7 @@ namespace docopt {
 			std::vector<boost::shared_ptr<LeafPattern> > c = collected;
 			bool matched = (*pattern)->match(l, c);
 			if (matched) {
-				outcomes.push_back(Outcome(std::move(l), std::move(c)));
+				outcomes.push_back(Outcome(l, c));
 			}
 		}
 

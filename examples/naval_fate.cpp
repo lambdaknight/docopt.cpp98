@@ -27,8 +27,9 @@ int main(int argc, const char** argv)
 												  true,               // show help if requested
 												  "Naval Fate 2.0");  // version string
 
-	for(auto const& arg : args) {
-		std::cout << arg.first << ": " << arg.second << std::endl;
+	for(std::map<std::string, docopt::value>::const_iterator arg = args.begin(); arg != args.end(); ++arg)
+	{
+		std::cout << arg->first << ": " << arg->second << std::endl;
 	}
 
 	return 0;

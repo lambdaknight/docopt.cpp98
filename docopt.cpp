@@ -13,8 +13,6 @@
 #include "docopt_value.h"
 
 #include <vector>
-#include <unordered_set>
-#include <unordered_map>
 #include <map>
 #include <string>
 #include <iostream>
@@ -64,11 +62,12 @@ std::ostream& docopt::operator<<(std::ostream& os, value const& val)
 class Tokens {
 public:
 	Tokens(std::vector<std::string> tokens, bool isParsingArgv = true)
-	: fTokens(std::move(tokens)),
+	: fTokens(tokens),
+	  fIndex(0),
 	  fIsParsingArgv(isParsingArgv)
 	{}
 
-	explicit operator bool() const {
+	operator bool() const {
 		return fIndex < fTokens.size();
 	}
 
@@ -134,7 +133,7 @@ public:
 	}
 
 	std::string pop() {
-		return std::move(fTokens.at(fIndex++));
+		return fTokens.at(fIndex++);
 	}
 
 	bool isParsingArgv() const { return fIsParsingArgv; }
@@ -145,12 +144,12 @@ public:
 	};
 private:
 	std::vector<std::string> fTokens;
-	size_t fIndex = 0;
+	size_t fIndex;
 	bool fIsParsingArgv;
 };
 
 template<typename T>
-bool flatPredicate(Pattern const* p) { return dynamic_cast<T const*>(p) != nullptr; }
+bool flatPredicate(Pattern const* p) { return dynamic_cast<T const*>(p) != NULL; }
 
 // Get all instances of 'T' from the pattern
 template <typename T>
@@ -196,10 +195,18 @@ static bool is_argument_spec(std::string const& token) {
 	if (token[0]=='<' && token[token.size()-1]=='>')
 		return true;
 
-	if (std::all_of(token.begin(), token.end(), &::isupper))
-		return true;
+	bool all_of = true;
 
-	return false;
+	for(std::string::const_iterator it = token.begin(); it != token.end(); ++it)
+	{
+		if(!isupper(*it))
+		{
+			all_of = false;
+			break;
+		}
+	}
+
+	return all_of;
 }
 
 template <typename I>
@@ -252,7 +259,7 @@ static PatternList parse_long(Tokens& tokens, std::vector<Option>& options)
 		std::vector<std::string> prefixes = longOptions(similar.begin(), similar.end());
 		std::string error = "'" + longOpt + "' is not a unique prefix: ";
 		error.append(join(prefixes.begin(), prefixes.end(), ", "));
-		throw Tokens::OptionError(std::move(error));
+		throw Tokens::OptionError(error);
 	} else if (similar.empty()) {
 		int argcount = equal.empty() ? 0 : 1;
 		options.push_back(Option("", longOpt, argcount));
@@ -267,20 +274,20 @@ static PatternList parse_long(Tokens& tokens, std::vector<Option>& options)
 		if (o->argCount() == 0) {
 			if (val) {
 				std::string error = o->longOption() + " must not have an argument";
-				throw Tokens::OptionError(std::move(error));
+				throw Tokens::OptionError(error);
 			}
 		} else {
 			if (!val) {
 				const std::string& token = tokens.current();
 				if (token.empty() || token=="--") {
 					std::string error = o->longOption() + " requires an argument";
-					throw Tokens::OptionError(std::move(error));
+					throw Tokens::OptionError(error);
 				}
 				val = tokens.pop();
 			}
 		}
 		if (tokens.isParsingArgv()) {
-			o->setValue(val ? std::move(val) : value(true));
+			o->setValue(val ? val : value(true));
 		}
 		ret.push_back(o);
 	}
@@ -314,8 +321,8 @@ static PatternList parse_short(Tokens& tokens, std::vector<Option>& options)
 
 		if (similar.size() > 1) {
 			std::string error = shortOpt + " is specified ambiguously "
-			+ std::to_string(similar.size()) + " times";
-			throw Tokens::OptionError(std::move(error));
+			+ (boost::format("%1%") % similar.size()).str() + " times";
+			throw Tokens::OptionError(error);
 		} else if (similar.empty()) {
 			options.push_back(Option(shortOpt, "", 0));
 
@@ -333,7 +340,7 @@ static PatternList parse_short(Tokens& tokens, std::vector<Option>& options)
 					const std::string& ttoken = tokens.current();
 					if (ttoken.empty() || ttoken=="--") {
 						std::string error = shortOpt + " requires an argument";
-						throw Tokens::OptionError(std::move(error));
+						throw Tokens::OptionError(error);
 					}
 					val = tokens.pop();
 				} else {
@@ -344,7 +351,7 @@ static PatternList parse_short(Tokens& tokens, std::vector<Option>& options)
 			}
 
 			if (tokens.isParsingArgv()) {
-				o->setValue(val ? std::move(val) : value(true));
+				o->setValue(val ? val : value(true));
 			}
 			ret.push_back(o);
 		}
@@ -374,7 +381,7 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '['");
 		}
 
-		ret.push_back(boost::make_shared<Optional>(std::move(expr)));
+		ret.push_back(boost::make_shared<Optional>(expr));
 	} else if (token=="(") {
 		tokens.pop();
 
@@ -385,7 +392,7 @@ static PatternList parse_atom(Tokens& tokens, std::vector<Option>& options)
 			throw DocoptLanguageError("Mismatched '('");
 		}
 
-		ret.push_back(boost::make_shared<Required>(std::move(expr)));
+		ret.push_back(boost::make_shared<Required>(expr));
 	} else if (token == "options") {
 		tokens.pop();
 		ret.push_back(boost::make_shared<OptionsShortcut>());
@@ -416,30 +423,33 @@ static PatternList parse_seq(Tokens& tokens, std::vector<Option>& options)
 
 		PatternList atom = parse_atom(tokens, options);
 		if (tokens.current() == "...") {
-			ret.push_back(boost::make_shared<OneOrMore>(std::move(atom)));
+			ret.push_back(boost::make_shared<OneOrMore>(atom));
 			tokens.pop();
 		} else {
-			std::move(atom.begin(), atom.end(), std::back_inserter(ret));
+			for(PatternList::const_iterator it = atom.begin(); it != atom.end(); ++it)
+			{
+				ret.push_back(*it);
+			}
 		}
 	}
 
 	return ret;
 }
 
-static boost::shared_ptr<Pattern> maybe_collapse_to_required(PatternList&& seq)
+static boost::shared_ptr<Pattern> maybe_collapse_to_required(const PatternList& seq)
 {
 	if (seq.size()==1) {
-		return std::move(seq[0]);
+		return seq[0];
 	}
-	return boost::make_shared<Required>(std::move(seq));
+	return boost::make_shared<Required>(seq);
 }
 
-static boost::shared_ptr<Pattern> maybe_collapse_to_either(PatternList&& seq)
+static boost::shared_ptr<Pattern> maybe_collapse_to_either(const PatternList& seq)
 {
 	if (seq.size()==1) {
-		return std::move(seq[0]);
+		return seq[0];
 	}
-	return boost::make_shared<Either>(std::move(seq));
+	return boost::make_shared<Either>(seq);
 }
 
 PatternList parse_expr(Tokens& tokens, std::vector<Option>& options)
@@ -452,16 +462,16 @@ PatternList parse_expr(Tokens& tokens, std::vector<Option>& options)
 		return seq;
 
 	PatternList patternList;
-	patternList.push_back(maybe_collapse_to_required(PatternList(std::move(seq))));
+	patternList.push_back(maybe_collapse_to_required(PatternList(seq)));
 
 	while (tokens.current() == "|") {
 		tokens.pop();
 		seq = parse_seq(tokens, options);
-		patternList.push_back(maybe_collapse_to_required(PatternList(std::move(seq))));
+		patternList.push_back(maybe_collapse_to_required(PatternList(seq)));
 	}
 
 	PatternList ret;
-	ret.push_back(maybe_collapse_to_either(PatternList(std::move(patternList))));
+	ret.push_back(maybe_collapse_to_either(PatternList(patternList)));
 	return ret;
 }
 
@@ -474,7 +484,7 @@ static Required parse_pattern(std::string const& source, std::vector<Option>& op
 		throw DocoptLanguageError("Unexpected ending: '" + tokens.the_rest() + "'");
 
 	assert(result.size() == 1  &&  "top level is always one big");
-	return Required(std::move(result));
+	return Required(result);
 }
 
 
@@ -515,11 +525,17 @@ static PatternList parse_argv(Tokens tokens, std::vector<Option>& options, bool 
 				ret.push_back(boost::make_shared<Argument>("", tokens.pop()));
 			}
 		} else if (starts_with(token, "--")) {
-			PatternList&& parsed = parse_long(tokens, options);
-			std::move(parsed.begin(), parsed.end(), std::back_inserter(ret));
+			PatternList parsed = parse_long(tokens, options);
+			for(PatternList::const_iterator it = parsed.begin(); it != parsed.end(); ++it)
+			{
+				ret.push_back(*it);
+			}
 		} else if (token[0]=='-' && token != "-") {
-			PatternList&& parsed = parse_short(tokens, options);
-			std::move(parsed.begin(), parsed.end(), std::back_inserter(ret));
+			PatternList parsed = parse_short(tokens, options);
+			for(PatternList::const_iterator it = parsed.begin(); it != parsed.end(); ++it)
+			{
+				ret.push_back(*it);
+			}
 		} else if (options_first) {
 			// option list is done; convert all the rest to arguments
 			while (tokens) {
@@ -582,6 +598,7 @@ static void extras(bool help, bool version, PatternList const& options) {
 	}
 }
 
+
 // Parse the doc string and generate the Pattern tree
 static std::pair<Required, std::vector<Option> > create_pattern_tree(std::string const& doc)
 {
@@ -598,7 +615,7 @@ static std::pair<Required, std::vector<Option> > create_pattern_tree(std::string
 
 	std::vector<Option const*> pattern_options = flat_filter<Option const>(pattern);
 
-	using UniqueOptions = std::unordered_set<Option const*, PatternHasher, PatternPointerEquality>;
+	typedef std::set<Option const*, PatternLess, std::allocator<Option const*> > UniqueOptions;
 	UniqueOptions const uniq_pattern_options(pattern_options.begin(), pattern_options.end());
 
 	// Fix up any "[options]" shortcuts with the actual option tree
@@ -628,7 +645,7 @@ static std::pair<Required, std::vector<Option> > create_pattern_tree(std::string
 	}
 
 
-	return std::make_pair(std::move(pattern), std::move(options));
+	return std::make_pair(pattern, options);
 }
 
 DOCOPT_INLINE

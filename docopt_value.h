@@ -13,8 +13,14 @@
 #include <vector>
 #include <functional> // std::hash
 #include <iosfwd>
+#include <typeinfo>
+#include <stdexcept>
 
 #include <boost/config.hpp>
+#include <boost/functional/hash.hpp>
+#include <cstdlib>
+
+#define BOOST_NOEXCEPT
 
 namespace docopt {
 
@@ -31,14 +37,9 @@ namespace docopt {
 		explicit value(bool);
 		explicit value(long);
 		explicit value(int v);
-
-		value(value const&);
-		value(value&&) BOOST_NOEXCEPT;
-		value& operator=(value const&);
-		value& operator=(value&&) BOOST_NOEXCEPT;
 		
 		// Test if this object has any contents at all
-		explicit operator bool() const { return kind != Empty; }
+		operator bool() const { return kind != Empty; }
 		
 		// Test the type contained by this value object
 		bool isBool()       const { return kind==Bool; }
@@ -93,7 +94,7 @@ namespace docopt {
 			error += kindAsString(expected);
 			error += "; type is actually ";
 			error += kindAsString(kind);
-			throw std::runtime_error(std::move(error));
+			throw std::runtime_error(error);
 		}
 
 	private:
@@ -105,11 +106,18 @@ namespace docopt {
 	std::ostream& operator<<(std::ostream&, value const&);
 }
 
-namespace std {
+namespace boost {
 	template <>
 	struct hash<docopt::value> {
 		size_t operator()(docopt::value const& val) const BOOST_NOEXCEPT {
 			return val.hash();
+		}
+	};
+
+	template <>
+	struct hash<std::type_info> {
+		size_t operator()(std::type_info const& val) const BOOST_NOEXCEPT {
+			return boost::hash<std::string>()(std::string(val.name()));
 		}
 	};
 }
@@ -140,114 +148,41 @@ namespace docopt {
 	value::value(std::string v)
 	: kind(String)
 	{
-		variant.strValue = std::move(v);
+		variant.strValue = v;
 	}
 
 	inline
 	value::value(std::vector<std::string> v)
 	: kind(StringList)
 	{
-		variant.strList = std::move(v);
+		variant.strList = v;
 	}
-
-	inline
-	value::value(value const& other)
-	: kind(other.kind)
-	{
-		switch (kind) {
-			case String:
-				variant.strValue = other.variant.strValue;
-				break;
-
-			case StringList:
-				variant.strList = other.variant.strList;
-				break;
-
-			case Bool:
-				variant.boolValue = other.variant.boolValue;
-				break;
-
-			case Long:
-				variant.longValue = other.variant.longValue;
-				break;
-
-			case Empty:
-			default:
-				break;
-		}
-	}
-
-	inline
-	value::value(value&& other) BOOST_NOEXCEPT
-	: kind(other.kind)
-	{
-		switch (kind) {
-			case String:
-				variant.strValue = std::move(other.variant.strValue);
-				break;
-
-			case StringList:
-				variant.strList = std::move(other.variant.strList);
-				break;
-
-			case Bool:
-				variant.boolValue = other.variant.boolValue;
-				break;
-
-			case Long:
-				variant.longValue = other.variant.longValue;
-				break;
-
-			case Empty:
-			default:
-				break;
-		}
-	}
-
-	inline
-	value& value::operator=(value const& other) {
-		// make a copy and move from it; way easier.
-		return *this = value(other);
-	}
-
-	inline
-	value& value::operator=(value&& other) BOOST_NOEXCEPT {
-		// move of all the types involved is noexcept, so we dont have to worry about
-		// these two statements throwing, which gives us a consistency guarantee.
-		this->~value();
-		new (this) value(std::move(other));
-
-		return *this;
-	}
-
-	template <class T>
-	void hash_combine(std::size_t& seed, const T& v);
 
 	inline
 	size_t value::hash() const BOOST_NOEXCEPT
 	{
 		switch (kind) {
 			case String:
-				return std::hash<std::string>()(variant.strValue);
+				return boost::hash<std::string>()(variant.strValue);
 
 			case StringList: {
-				size_t seed = std::hash<size_t>()(variant.strList.size());
+				size_t seed = boost::hash<size_t>()(variant.strList.size());
 				for(std::vector<std::string>::const_iterator it = variant.strList.begin(); it != variant.strList.end(); ++it)
 				{
-					hash_combine(seed, *it);
+					boost::hash_combine(seed, *it);
 				}
 				return seed;
 			}
 
 			case Bool:
-				return std::hash<bool>()(variant.boolValue);
+				return boost::hash<bool>()(variant.boolValue);
 
 			case Long:
-				return std::hash<long>()(variant.longValue);
+				return boost::hash<long>()(variant.longValue);
 
 			case Empty:
 			default:
-				return std::hash<void*>()(nullptr);
+				return boost::hash<void*>()(NULL);
 		}
 	}
 
@@ -265,7 +200,8 @@ namespace docopt {
 		if (kind == String) {
 			const std::string& str = variant.strValue;
 			std::size_t pos;
-			const long ret = stol(str, &pos); // Throws if it can't convert
+			char* pEnd;
+			const long ret = std::strtol(str.c_str(), &pEnd, 10);
 			if (pos != str.length()) {
 				// The string ended in non-digits.
 				throw std::runtime_error( str + " contains non-numeric characters.");
