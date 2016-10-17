@@ -84,7 +84,7 @@ namespace docopt {
 						std::vector<std::string> const& argv,
 						bool help = true,
 						std::string const& version = "",
-						bool options_first = false) BOOST_NOEXCEPT;
+						bool options_first = false);
 }
 
 #ifdef DOCOPT_HEADER_ONLY

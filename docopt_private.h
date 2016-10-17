@@ -14,15 +14,6 @@
 #include <set>
 #include <assert.h>
 
-
-#ifdef BOOST_NO_CXX11_FINAL
-#    define OVERRIDE
-#    define FINAL
-#else
-#    define OVERRIDE override
-#    define FINAL final
-#endif
-
 // Workaround GCC 4.8 not having boost::regex
 #include <boost/regex.hpp>
 #include <boost/make_shared.hpp>
@@ -101,7 +92,7 @@ namespace docopt {
 		  fValue(v)
 		{}
 
-		virtual std::vector<Pattern*> flat(bool (*filter)(Pattern const*)) OVERRIDE {
+		virtual std::vector<Pattern*> flat(bool (*filter)(Pattern const*)) {
 			std::vector<Pattern*> ret;
 			if (filter(this)) {
 				ret.push_back(this);
@@ -109,20 +100,20 @@ namespace docopt {
 			return ret;
 		}
 
-		virtual void collect_leaves(std::vector<LeafPattern*>& lst) OVERRIDE FINAL {
+		virtual void collect_leaves(std::vector<LeafPattern*>& lst) {
 			lst.push_back(this);
 		}
 
-		virtual bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		virtual bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const;
 
-		virtual bool hasValue() const OVERRIDE { return static_cast<bool>(fValue); }
+		virtual bool hasValue() const { return static_cast<bool>(fValue); }
 
 		value const& getValue() const { return fValue; }
 		void setValue(value v) { fValue = v; }
 
-		virtual std::string const& name() const OVERRIDE { return fName; }
+		virtual std::string const& name() const { return fName; }
 
-		virtual size_t hash() const OVERRIDE {
+		virtual size_t hash() const {
 			size_t seed = boost::hash<std::type_info>()(typeid(*this));
 			boost::hash_combine(seed, fName);
 			boost::hash_combine(seed, fValue);
@@ -151,7 +142,7 @@ namespace docopt {
 			return *this;
 		}
 
-		virtual std::string const& name() const OVERRIDE {
+		virtual std::string const& name() const {
 			throw std::runtime_error("Logic error: name() shouldnt be called on a BranchPattern");
 		}
 
@@ -159,7 +150,7 @@ namespace docopt {
 			throw std::runtime_error("Logic error: name() shouldnt be called on a BranchPattern");
 		}
 
-		virtual std::vector<Pattern*> flat(bool (*filter)(Pattern const*)) OVERRIDE {
+		virtual std::vector<Pattern*> flat(bool (*filter)(Pattern const*)) {
 			std::vector<Pattern*> ret;
 			if (filter(this)) {
 				ret.push_back(this);
@@ -176,7 +167,7 @@ namespace docopt {
 			return ret;
 		}
 
-		virtual void collect_leaves(std::vector<LeafPattern*>& lst) OVERRIDE FINAL {
+		virtual void collect_leaves(std::vector<LeafPattern*>& lst) {
 			for(PatternList::iterator child = fChildren.begin(); child != fChildren.end(); ++child)
 			{
 				(*child)->collect_leaves(lst);
@@ -207,7 +198,7 @@ namespace docopt {
 		}
 
 
-		virtual size_t hash() const OVERRIDE {
+		virtual size_t hash() const {
 			size_t seed = boost::hash<std::type_info>()(typeid(*this));
 			boost::hash_combine(seed, fChildren.size());
 			for(PatternList::const_iterator child = fChildren.begin(); child != fChildren.end(); ++child)
@@ -229,7 +220,7 @@ namespace docopt {
 		Argument(std::string name, value v = value()) : LeafPattern(name, v) {}
 
 	protected:
-		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const;
 	};
 
 	class Command : public Argument {
@@ -239,10 +230,10 @@ namespace docopt {
 		{}
 
 	protected:
-		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const;
 	};
 
-	class Option FINAL
+	class Option
 	: public LeafPattern
 	{
 	public:
@@ -270,7 +261,7 @@ namespace docopt {
 		std::string const& shortOption() const { return fShortOption; }
 		int argCount() const { return fArgcount; }
 
-		virtual size_t hash() const OVERRIDE {
+		virtual size_t hash() const {
 			size_t seed = LeafPattern::hash();
 			boost::hash_combine(seed, fShortOption);
 			boost::hash_combine(seed, fLongOption);
@@ -279,7 +270,7 @@ namespace docopt {
 		}
 
 	protected:
-		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const OVERRIDE;
+		virtual std::pair<size_t, boost::shared_ptr<LeafPattern> > single_match(PatternList const& left) const;
 
 	private:
 		std::string fShortOption;
@@ -291,14 +282,14 @@ namespace docopt {
 	public:
 		Required(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const;
 	};
 
 	class Optional : public BranchPattern {
 	public:
 		Optional(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE {
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const {
 			for(PatternList::const_iterator pattern = fChildren.begin(); pattern != fChildren.end(); ++pattern)
 			{
 				(*pattern)->match(left, collected);
@@ -316,14 +307,14 @@ namespace docopt {
 	public:
 		OneOrMore(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const;
 	};
 
 	class Either : public BranchPattern {
 	public:
 		Either(PatternList children = PatternList()) : BranchPattern(children) {}
 
-		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const OVERRIDE;
+		bool match(PatternList& left, std::vector<boost::shared_ptr<LeafPattern> >& collected) const;
 	};
 
 #pragma mark -

@@ -20,8 +20,6 @@
 #include <boost/functional/hash.hpp>
 #include <cstdlib>
 
-#define BOOST_NOEXCEPT
-
 namespace docopt {
 
 	/// A generic type to hold the various types that can be produced by docopt.
@@ -53,7 +51,7 @@ namespace docopt {
 		std::string const& asString() const;
 		std::vector<std::string> const& asStringList() const;
 
-		size_t hash() const BOOST_NOEXCEPT;
+		size_t hash() const;
 		
 		// equality is based on hash-equality
 		friend bool operator==(value const&, value const&);
@@ -109,14 +107,14 @@ namespace docopt {
 namespace boost {
 	template <>
 	struct hash<docopt::value> {
-		size_t operator()(docopt::value const& val) const BOOST_NOEXCEPT {
+		size_t operator()(docopt::value const& val) const {
 			return val.hash();
 		}
 	};
 
 	template <>
 	struct hash<std::type_info> {
-		size_t operator()(std::type_info const& val) const BOOST_NOEXCEPT {
+		size_t operator()(std::type_info const& val) const {
 			return boost::hash<std::string>()(std::string(val.name()));
 		}
 	};
@@ -159,7 +157,7 @@ namespace docopt {
 	}
 
 	inline
-	size_t value::hash() const BOOST_NOEXCEPT
+	size_t value::hash() const
 	{
 		switch (kind) {
 			case String:

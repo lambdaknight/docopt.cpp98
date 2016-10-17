@@ -709,7 +709,7 @@ docopt::docopt(std::string const& doc,
 		   std::vector<std::string> const& argv,
 		   bool help,
 		   std::string const& version,
-		   bool options_first) BOOST_NOEXCEPT
+		   bool options_first)
 {
 	try {
 		return docopt_parse(doc, argv, help, !version.empty(), options_first);
