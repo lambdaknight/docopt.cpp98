@@ -1,4 +1,4 @@
-``docopt.cpp``: A C++11 Port
+``docopt.cpp``: A C++98 Port
 ============================
 docopt creates *beautiful* command-line interfaces
 --------------------------------------------------
@@ -18,42 +18,42 @@ and instead can write only the help message--*the way you want it*.
 .. code:: c++
 
     #include "docopt.h"
-
+    
     #include <iostream>
-
+    
     static const char USAGE[] =
-    R"(Naval Fate.
-
-        Usage:
-          naval_fate ship new <name>...
-          naval_fate ship <name> move <x> <y> [--speed=<kn>]
-          naval_fate ship shoot <x> <y>
-          naval_fate mine (set|remove) <x> <y> [--moored | --drifting]
-          naval_fate (-h | --help)
-          naval_fate --version
-
-        Options:
-          -h --help     Show this screen.
-          --version     Show version.
-          --speed=<kn>  Speed in knots [default: 10].
-          --moored      Moored (anchored) mine.
-          --drifting    Drifting mine.
-    )";
-
+    "Naval Fate.\n"
+    "\n"
+    "    Usage:\n"
+    "      naval_fate ship new <name>...\n"
+    "      naval_fate ship <name> move <x> <y> [--speed=<kn>]\n"
+    "      naval_fate ship shoot <x> <y>\n"
+    "      naval_fate mine (set|remove) <x> <y> [--moored | --drifting]\n"
+    "      naval_fate (-h | --help)\n"
+    "      naval_fate --version\n"
+    "\n"
+    "    Options:\n"
+    "      -h --help     Show this screen.\n"
+    "      --version     Show version.\n"
+    "      --speed=<kn>  Speed in knots [default: 10].\n"
+    "      --moored      Moored (anchored) mine.\n"
+    "      --drifting    Drifting mine.\n";
+    
     int main(int argc, const char** argv)
     {
-        std::map<std::string, docopt::value> args
-            = docopt::docopt(USAGE,
-                             { argv + 1, argv + argc },
-                             true,               // show help if requested
-                             "Naval Fate 2.0");  // version string
-
-        for(auto const& arg : args) {
-            std::cout << arg.first <<  arg.second << std::endl;
-        }
-
-        return 0;
+      std::map<std::string, docopt::value> args = docopt::docopt(USAGE, 
+                              std::vector<std::string>(argv + 1, argv + argc),
+                              true,               // show help if requested
+                              "Naval Fate 2.0");  // version string
+    
+      for(std::map<std::string, docopt::value>::const_iterator arg = args.begin(); arg != args.end(); ++arg)
+      {
+        std::cout << arg->first << ": " << arg->second << std::endl;
+      }
+    
+      return 0;
     }
+
 
 Beat that! The option parser is generated based on the docstring above
 that is passed to ``docopt::docopt`` function.  ``docopt`` parses the usage
@@ -63,25 +63,21 @@ usage pattern; it parses options, arguments and commands based on
 that. The basic idea is that *a good help message has all necessary
 information in it to make a parser*.
 
-C++11 port details
+C++98 port details
 ---------------------------------------------------
 
 This is a port of the ``docopt.py`` module (https://github.com/docopt/docopt),
 and we have tried to maintain full feature parity (and code structure) as the
 original.
 
-This port is written in C++11 and also requires a good C++11 standard library
-(in particular, one with ``regex`` support). The following compilers are known
-to work with docopt:
+This port is written in C++98 and also requires the Boost library.
+The following compilers are known to work with docopt.cpp98:
 
-- Clang 3.3 and later
-- GCC 4.9
-- Visual C++ 2015 RC
+- GCC 4.4.7
 
-GCC-4.8 can work, but the std::regex module needs to be replaced with ``Boost.Regex``.
-In that case, you will need to define ``DOCTOPT_USE_BOOST_REGEX`` when compiling
-docopt, and link your code with the appropriated Boost libraries. A relativley
-recent version of Boost is needed: 1.55 works, but 1.46 does not for example.
+The following version of Boost is known to work:
+
+- Boost 1.41
 
 This port is licensed under the MIT license, just like the original module.
 However, we are also dual-licensing this code under the Boost License, version 1.0,
@@ -113,24 +109,22 @@ API
   create the option parser.  The simple rules of how to write such a
   help message are given in next sections.  Here is a quick example of
   such a string (note that this example uses the "raw string literal" feature
-  that was added to C++11):
+  that was added to C++98):
 
 .. code:: c++
 
-    R"(Usage: my_program [-hso FILE] [--quiet | --verbose] [INPUT ...]
-
-    -h --help    show this
-    -s --sorted  sorted output
-    -o FILE      specify output file [default: ./test.txt]
-    --quiet      print less text
-    --verbose    print more text
-    )"
+    "Usage: my_program [-hso FILE] [--quiet | --verbose] [INPUT ...]
+    "\n"
+    "-h --help    show this\n"
+    "-s --sorted  sorted output\n"
+    "-o FILE      specify output file [default: ./test.txt]\n"
+    "--quiet      print less text\n"
+    "--verbose    print more text\n"
 
 - ``argv`` is a vector of strings representing the args passed. Although
   main usually takes a ``(int argc, const char** argv)`` pair, you can
-  pass the value ``{argv+1, argv+argc}`` to generate the vector automatically.
-  (Note we skip the argv[0] argument!) Alternatively you can supply a list of
-  strings like ``{ "--verbose", "-o", "hai.txt" }``.
+  pass the value ``std::vector<std::string>(argv + 1, argv + argc)`` to generate the vector automatically.
+  (Note we skip the argv[0] argument!)
 
 - ``help``, by default ``true``, specifies whether the parser should
   automatically print the help message (supplied as ``doc``) and
