@@ -18,7 +18,7 @@
 
 #include <boost/config.hpp>
 #include <boost/functional/hash.hpp>
-#include <cstdlib>
+#include <boost/lexical_cast.hpp>
 
 namespace docopt {
 
@@ -197,14 +197,13 @@ namespace docopt {
 		// Attempt to convert a string to a long
 		if (kind == String) {
 			const std::string& str = variant.strValue;
-			std::size_t pos;
-			char* pEnd;
-			const long ret = std::strtol(str.c_str(), &pEnd, 10);
-			if (pos != str.length()) {
-				// The string ended in non-digits.
-				throw std::runtime_error( str + " contains non-numeric characters.");
-			}
-			return ret;
+            try {
+                long ret = boost::lexical_cast<long>(str);
+                return ret;
+            }
+            catch(const boost::bad_lexical_cast& e) {
+                throw std::runtime_error(str + " contains non-numeric characters");
+            }
 		}
 		throwIfNotKind(Long);
 		return variant.longValue;
